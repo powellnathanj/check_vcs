@@ -1,0 +1,147 @@
+#!/usr/bin/perl
+#################################################################
+#
+# check_vcs - A Nagios Check for Veritas Cluster Server
+# 
+# Copyright (C) 2011  Nathan Powell <nathan@nathanpowell.org>
+# 
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+#
+#################################################################
+use warnings;
+use strict;
+use Getopt::Long;
+use lib  "/opt/nagios/libexec" ;
+use utils qw(%ERRORS &print_revision &support &usage );
+
+#####
+# Config 
+
+my $VRTSbin_path = "/opt/VRTSvcs/bin/"; # Default installation path (at least on Linux)
+
+
+#####
+# Don't change things beyond this point unless you know what you are doing
+# =======================================================================
+sub print_help();
+sub print_usage();
+sub process_arguments();
+sub do_check();
+
+my $PROGNAME = "check_vcs";
+my $PROGVER  = "1.0";
+my $msg = "";
+my $state = $ERRORS{'UNKNOWN'};
+my $service_group = "";
+
+my $VRTShastatus = "$VRTSbin_path/hastatus";
+
+my $opt_V = "";
+my $opt_h = "";
+my $opt_u = "";
+my $opt_g = "";
+
+Getopt::Long::Configure('bundling');
+my $status = process_arguments();
+if ($status){
+        print "ERROR: processing arguments\n";
+        exit $ERRORS{"UNKNOWN"};
+}
+
+# Ok, presumably at this point they want something from us...
+do_check();
+
+# Print the message, and exit with our state as the exit code
+print $msg;
+exit $state;
+
+# functions
+sub do_check(){
+  # It's a Service Group Check?
+  unless($service_group eq ""){
+    # B  SERVICEGROUPNAME HOSTNAME         Y          N               ONLINE
+    my @group_check_results = grep /$service_group/, `$VRTShastatus -sum`; 
+  
+    foreach(@group_check_results) {
+      if($_ =~ /FAULTED/){
+        my ($f1, $f2, $f3, $f4, $f5, $f6) = split ' ', "$_";
+        $msg = "CRITICAL: Service Group: $service_group is FAULTED on node $f3";
+        $state = $ERRORS{'CRITICAL'};
+  
+      }
+    }
+  
+  }
+  # add other checks here
+}
+
+
+# process cli arguments
+sub process_arguments(){
+  GetOptions
+            ("V"     => \$opt_V, "version" => \$opt_V,
+             "h"     => \$opt_h, "help"    => \$opt_h,
+             "u"     => \$opt_u, "usage"   => \$opt_u,
+             "g=s"   => \$opt_g, "group=s" => \$opt_g
+            );
+
+        if ($opt_V) {
+          print_revision($PROGNAME, $PROGVER);
+          exit $ERRORS{'OK'};
+        }
+
+        if ($opt_h) {
+          print_help();
+          exit $ERRORS{'OK'};
+        }
+
+        if ($opt_u) {
+          print_usage();
+          exit $ERRORS{'OK'};
+        }
+
+        if ($opt_g) {
+          my $group_name = "$opt_g" . " ";
+          my @group_results = grep /$group_name/, `$VRTShastatus -sum`;
+          my $len = @group_results;
+          
+          unless($len == 0){ # Ok, the group was at least found
+            $service_group = "$group_name";
+          } else {
+            print "No $opt_g! Stop that! You are not Service Group!\n";
+            exit $ERRORS{'UNKNOWN'};
+          }
+          return $ERRORS{'OK'};
+        }
+}
+
+# Usage
+sub print_usage(){
+  print "  Usage: $PROGNAME -g \$SERVICE_GROUP\n";
+  print "\n";
+}
+
+# Help
+sub print_help(){
+  print_revision($PROGNAME, $PROGVER);
+  print "\n";
+  print_usage();
+
+  print "  Checks the status of Veritas Cluster Server Service Groups\n";
+  print "  -h (--help)\n";
+  print "  -V (--version)\n";
+
+  print "\n\n";
+}
