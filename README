@@ -1,4 +1,15 @@
-
 check_vcs - A Nagios Check for Veritas Cluster Server
 
+check_vcs is currently only useful for checking if a Service Group is ONLINE or FAULTED.
 
+Currently the user executing the script has to have sudo privileges for running
+hastatus.  If I can figure out a way to do away with that dependency I will.
+
+Also if the check is being passed to check_by_ssh you will need to turn off the
+default requirement (on RHEL/Cent/Fedora and possibly others) for a tty to use
+sudo. 
+
+Example:
+
+  Defaults:nagios !requiretty
+  nagios ALL=NOPASSWD: /opt/VRTSvcs/bin/hastatus
