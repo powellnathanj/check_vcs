@@ -9,7 +9,7 @@ Also if the check is being passed to check_by_ssh you will need to turn off the
 default requirement (on RHEL/Cent/Fedora and possibly others) for a tty to use
 sudo. 
 
-Example:
+Example addition to /etc/sudoers:
 
   Defaults:nagios !requiretty
   nagios ALL=NOPASSWD: /opt/VRTSvcs/bin/hastatus
