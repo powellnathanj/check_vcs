@@ -131,7 +131,7 @@ sub process_arguments(){
           unless($len == 0){ # Ok, the group was at least found
             $service_group = "$group_name";
           } else {
-            print "No $opt_g! Stop that! You are not Service Group!\n";
+            print "No $opt_g! Stop that! You are not a Service Group!\n";
             exit $ERRORS{'UNKNOWN'};
           }
           return $ERRORS{'OK'};
