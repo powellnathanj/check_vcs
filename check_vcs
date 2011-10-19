@@ -78,12 +78,11 @@ sub do_check{
     # Get rid of the OFFLINE results
     @group_check_results = grep {$_ !~ /OFFLINE /} @group_check_results;
     foreach(@group_check_results) {
+      my @fields = do_fields("$_");
       if($_ =~ /FAULTED/){
-        my @fields = do_fields("$_");
         $msg = "CRITICAL: Service Group: $service_group is FAULTED on node $fields[2]";
         $state = $ERRORS{'CRITICAL'};
       } else { # This could use some nuance
-        my @fields = do_fields("$_");
         $msg = "OK: Service Group: $service_group is ONLINE on node $fields[2]";
         $state = $ERRORS{'OK'};
       }
