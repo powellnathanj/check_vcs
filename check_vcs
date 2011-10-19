@@ -38,7 +38,8 @@ my $VRTSbin_path = "/opt/VRTSvcs/bin/"; # Default installation path (at least on
 sub print_help();
 sub print_usage();
 sub process_arguments();
-sub do_check();
+sub do_check;
+sub do_fields;
 
 my $PROGNAME = "check_vcs";
 my $PROGVER  = "1.0";
@@ -55,6 +56,7 @@ my $opt_g = "";
 
 Getopt::Long::Configure('bundling');
 my $status = process_arguments();
+
 if ($status){
         print "ERROR: processing arguments\n";
         exit $ERRORS{"UNKNOWN"};
@@ -68,18 +70,22 @@ print $msg;
 exit $state;
 
 # functions
-sub do_check(){
+sub do_check{
   # It's a Service Group Check?
   unless($service_group eq ""){
     # B  SERVICEGROUPNAME HOSTNAME         Y          N               ONLINE
-    my @group_check_results = grep /$service_group/, `$VRTShastatus -sum`; 
-  
+    my @group_check_results = grep /$service_group/, `sudo $VRTShastatus -sum`; 
+    # Get rid of the OFFLINE results
+    @group_check_results = grep {$_ !~ /OFFLINE /} @group_check_results;
     foreach(@group_check_results) {
       if($_ =~ /FAULTED/){
-        my ($f1, $f2, $f3, $f4, $f5, $f6) = split ' ', "$_";
-        $msg = "CRITICAL: Service Group: $service_group is FAULTED on node $f3";
+        my @fields = do_fields("$_");
+        $msg = "CRITICAL: Service Group: $service_group is FAULTED on node $fields[2]";
         $state = $ERRORS{'CRITICAL'};
-  
+      } else { # This could use some nuance
+        my @fields = do_fields("$_");
+        $msg = "OK: Service Group: $service_group is ONLINE on node $fields[2]";
+        $state = $ERRORS{'OK'};
       }
     }
   
@@ -87,6 +93,11 @@ sub do_check(){
   # add other checks here
 }
 
+sub do_fields{
+  my $line = shift;
+  my @fields = split ' ', $line;
+  return @fields;
+}
 
 # process cli arguments
 sub process_arguments(){
@@ -114,7 +125,7 @@ sub process_arguments(){
 
         if ($opt_g) {
           my $group_name = "$opt_g" . " ";
-          my @group_results = grep /$group_name/, `$VRTShastatus -sum`;
+          my @group_results = grep /$group_name/, `sudo $VRTShastatus -sum`;
           my $len = @group_results;
           
           unless($len == 0){ # Ok, the group was at least found
